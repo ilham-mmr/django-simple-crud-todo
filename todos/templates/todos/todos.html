@@ -1,0 +1,27 @@
+{% extends 'todos/base.html' %}
+{% block title %}Add Todo{% endblock  %}
+
+{% block custom_css %}
+<style type="text/css">
+ul {
+    list-style: none;
+}
+</style>
+{% endblock  %}
+
+{% block content %}
+<form method="POST">
+        {% csrf_token %}
+        <div class="form-control {% if field.user_name.errors %}errors{% endif %}" >
+        {% for field in form %}
+            <div class="mb-3">
+                {{ field.label_tag}}
+                {{ field }}
+                {{ field.errors }}
+            </div>
+        {% endfor %}
+             <button type="submit" class="btn btn-primary">Send</button>
+        </div>
+        
+</form>
+{% endblock  %}
