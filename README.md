@@ -12,40 +12,40 @@ to run the server | python [manage.py](http://manage.py/) runserver
 to create a django app | python [manage.py](http://manage.py/) startapp "app name"
 
 reverse() to dynamically generete url
+django shell | python [manage.py](http://manage.py) shell
 
-django templating language
 
-features
+### django templating language
+
+#### features
 
 1. filter or | [https://docs.djangoproject.com/en/3.2/ref/templates/builtins/](https://docs.djangoproject.com/en/3.2/ref/templates/builtins/)
 2. tags e.g. for tag, if tag
 
-django shell | python [manage.py](http://manage.py) shell
-
-django models
+### django models
 
 1. django fields
 2. Migrations
 3. python [manage.py](http://manage.py) makemigrations | to create migration
 4. python [manage.py](http://manage.py) migrate | to migrate 
 
--) to save model
+- ##### to save model
 
 e.g. harry_potter = Book(title="Harry Potter 1 - The philosopher's Stone", rating=5)
 
--) to delete
+- ##### to delete
 
 harry_potter.delete()
 
--) to get one
+- ##### to get one
 
 Book.objects.get(id=1)
 
--) filter 
+- ##### filter 
 
 Book.objects.filter(rating__lt=6, title_contains='story')
 
--) filter is like "and" to use "or" query we must wrap the attribute with Q class
+- ##### filter is like "and" to use "or" query we must wrap the attribute with Q class
 
 Book
 
@@ -74,7 +74,7 @@ Book.objects.filter(Q(rating__lt=3) | Q(is_bestselling=True), title="Harry Potte
     *return* reverse("book-detail", args=[self.slug])
     
 
-Django Admin
+### Django Admin
 
 to register the created app in admin
 
@@ -97,27 +97,27 @@ class BookAdmin(admin.ModelAdmin):
 admin.site.register(Book, admin_class=BookAdmin)
 ```
 
-Django Relationship
+### Django Relationship
 
--)One to many e.g. Author has many books. a book belongs to author
+- One to many e.g. Author has many books. a book belongs to author
 
 ```jsx
 author = models.ForeignKey(Author, on_delete=models.CASCADE, null=True)
 ```
 
-to query books from author
+- to query books from author
 
 > jkr = Author.objects.get(first_name="J.K.")
 jkr.book_set.all()
 > 
 
-to change the related name. we need to mody the author field in the book model
+- to change the related name. we need to mody the author field in the book model
 
 ```jsx
 author = models.ForeignKey(Author, on_delete=models.CASCADE, null=True, related_name="books")
 ```
 
--) One to one e.g. one author has one address, one address belongs to one author
+- One to one e.g. one author has one address, one address belongs to one author
 
 ```jsx
 address = OneToOneField(Address,on_delete=models.SET_NULL)
@@ -160,7 +160,7 @@ germany.book_set.all()
 
 to change the default name, we can add the related_name
 
-Django Form
+### Django Form
 
 ```python
 if request.method == 'POST':
@@ -266,7 +266,7 @@ if request.method == 'POST':
             return redirect('/thank-you')
 ```
 
-Class Based Views
+### Class Based Views
 
 you can get and post method 
 
@@ -376,6 +376,142 @@ def get_context_data(self, **kwargs):
     
 - update view and delete view
 
-FILE UPLOADS
+### FILE UPLOADS
 
 - request.FILES['image']
+- adding a form with the filefield
+
+```python
+from django import forms
+
+class ProfileForm(forms.Form):
+    user_image = forms.FileField()
+```
+
+we need to configure where we wanna store the files in settings.py
+
+```python
+MEDIA_ROOT = BASE_DIR/'uploads'
+```
+
+then we create the model
+
+```python
+class UserProfile(models.Model):
+    image = models.FileField(upload_to='images')
+```
+
+in the views
+
+```python
+class CreateProfileView(View):
+    def get(self, request):
+        form = ProfileForm()
+        return render(request, "profiles/create_profile.html",{
+            'form': form
+        })
+
+    def post(self, request):
+        submitted_form = ProfileForm(request.POST, request.FILES)
+        if submitted_form.is_valid():
+             profile = UserProfile(image=request.FILES['user_image'])
+             profile.save()
+        return HttpResponseRedirect('/profiles/')
+```
+
+USING IMAGEFIELD instead of FileField. it will validate images only
+
+when we use imagefield, we need to install pillow
+
+```python
+python -m pip install Pillow"
+```
+
+```python
+models.py
+from django.db import models
+
+# Create your models here.
+class UserProfile(models.Model):
+    image = models.ImageField(upload_to='images')
+forms.py
+from django import forms
+
+class ProfileForm(forms.Form):
+    user_image = forms.ImageField()
+```
+
+using create view for file upload
+
+```python
+class CreateProfileView(CreateView):
+    template_name = 'profiles/create_profile.html'
+    model =UserProfile
+    fields = '__all__'
+    success_url ='/profiles'
+```
+
+serving uploaded files
+
+- the model's property has image.path
+
+```python
+{% for profile in profiles %}
+        <li>
+            <img src="{{ profile.image.url }}" alt="">
+        </li>
+        {% endfor %}
+```
+
+atm, no photos are publicly accessible. to expose them to public do this
+
+1. setting media_url in settings.py
+    
+    ```python
+    # the url that public should see
+    MEDIA_URL = '/user-media/'
+    ```
+    
+2. next configure the [urls.py](http://urls.py) in project level
+
+```python
+from django.conf.urls.static import static
+from django.conf import settings
+urlpatterns = [
+    path('admin/', admin.site.urls),
+    path('', include('reviews.urls')),
+     path("profiles/", include("profiles.urls"))
+] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+```
+
+3. in the url, it looks like this src="/user-media/images/tech_team.png"
+
+### SESSIONS
+
+session is an ongoing connection between a client and server
+
+alter session age in settings.py. by default two weeks
+
+SESSION_COOKIE_AGE = 120
+
+dont store object in session
+
+```python
+class AddFavoriteView(View):
+    def post(self, request):
+        review_id = request.POST['review_id']
+        request.session['favorite_review'] = review_id  
+        return HttpResponseRedirect('/reviews/'+review_id)
+```
+
+to expose it in html we override the following method. hence in html we can use the is_favorite
+
+```python
+def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        loaded_review = self.object
+        request = self.request
+        favorite_id = request.session.get('favorite_review')
+        context['is_favorite'] = favorite_id == str(loaded_review.id)
+        return context
+```
